@@ -1,57 +1,98 @@
-
-
-
 using UnityEngine;
 
-public class PlayerMovement : MonoBehaviour
+public abstract class PlayerMovement : MonoBehaviour
 {
 
-    [SerializeField] private float speed;
-    private Rigidbody2D body;
-    private Vector3 scale;
-    private Animator anim;
-    private bool grounded;
+    protected KeyCode leftkey;
+    protected KeyCode rightKey;
+    protected KeyCode jumpKey;
+
+    public KeyCode hitKey;
+
+    [SerializeField] protected float speed;
+    [SerializeField] protected float jumpPower;
+
+    [SerializeField] protected LayerMask groundLayer;
+    protected Rigidbody2D body;
+    protected Vector3 scale;
+    protected Animator anim;
+    protected BoxCollider2D boxCollider;
+    protected float horizontalInput;
     private void Awake()
     {
         body = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
-
-
+        boxCollider = GetComponent<BoxCollider2D>();
     }
 
-    private void Update()
+    protected void Update()
     {
-        float horizontalInput = Input.GetAxis("Horizontal");
-        body.velocity = new Vector2(horizontalInput * speed, body.velocity.y);
-        if (horizontalInput > 0.01f)
+        //get current scale 
+        scale = transform.localScale;
+        //get input axis (1 if rightclick, -1 if left click)
+        horizontalInput = getHorizontalInput();
+        if (isClickingRightKey())
         {
+            body.velocity = new Vector2(horizontalInput * speed, body.velocity.y);
             scale.x = Mathf.Abs(scale.x);
             transform.localScale = scale;
         }
-        else if (horizontalInput < -0.01f)
+        else if (isClickingLeftKey())
         {
+            body.velocity = new Vector2(horizontalInput * speed, body.velocity.y);
             scale.x = -Mathf.Abs(scale.x);
             transform.localScale = scale;
         }
-        if (Input.GetKey(KeyCode.Space) && grounded)
+        if (Input.GetKey(jumpKey) && IsGrounded())
         {
             jump();
         }
         anim.SetBool("run", horizontalInput != 0);
-        anim.SetBool("grounded", grounded);
+        anim.SetBool("grounded", IsGrounded());
 
+        if (Input.GetKey(hitKey) && IsGrounded())
+        {
+            anim.SetTrigger("hit");
+
+        }
     }
 
 
     private void jump()
     {
-        body.velocity = new Vector2(body.velocity.x, speed);
+        body.velocity = new Vector2(body.velocity.x, jumpPower);
         anim.SetTrigger("jump");
-        grounded = false;
+
     }
-    void OnCollisionEnter2D(Collision2D collision)
+
+
+    private void hit()
     {
-        if (collision.gameObject.tag == "Ground")
-            grounded = true;
+    }
+
+    private bool IsGrounded()
+    {
+        RaycastHit2D raycastHit = Physics2D.BoxCast(boxCollider.bounds.center, boxCollider.bounds.size, 0, Vector2.down, 0.1f, groundLayer);
+
+        return raycastHit.collider != null;
+    }
+    public bool canAttack()
+    {
+        return horizontalInput == 0 && IsGrounded();
+    }
+    private float getHorizontalInput()
+    {
+        if (isClickingLeftKey()) return -0.5f;
+        else if (isClickingRightKey()) return 0.5f;
+        else return 0f;
+    }
+    protected bool isClickingLeftKey()
+    {
+        return Input.GetKey(leftkey);
+    }
+    protected bool isClickingRightKey()
+    {
+        return Input.GetKey(rightKey);
     }
 }
+
